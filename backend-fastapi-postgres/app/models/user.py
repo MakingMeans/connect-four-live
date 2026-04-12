@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
+
 from app.db.base import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -10,3 +12,4 @@ class User(Base):
     password = Column(String)
     is_verified = Column(Boolean, default=False)
     verification_code = Column(String, nullable=True)
+    verification_code_expires_at = Column(DateTime(timezone=True), nullable=True)

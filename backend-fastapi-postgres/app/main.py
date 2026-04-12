@@ -1,28 +1,21 @@
-from fastapi import FastAPI
-from app.db.base import Base
-from app.db.session import engine
-from app.api.routes import auth, users
+import logging
 
+from fastapi import FastAPI
+
+from app.api.routes import auth, users
+from app.core.config import PROJECT_NAME
+from app.db.bootstrap import init_db
 from app.models import user
 
-from sqlalchemy.exc import OperationalError
-import time
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
-app = FastAPI()
+app = FastAPI(title=PROJECT_NAME)
 
 app.include_router(auth.router)
 app.include_router(users.router)
-
-
-def init_db():
-    for i in range(10):
-        try:
-            Base.metadata.create_all(bind=engine)
-            print("DB conectada ✅")
-            break
-        except OperationalError:
-            print(f"Esperando DB... intento {i+1}")
-            time.sleep(2)
 
 
 @app.on_event("startup")
@@ -32,4 +25,4 @@ def on_startup():
 
 @app.get("/")
 def root():
-    return {"message": "API funcionando 🚀"}
+    return {"message": "API funcionando"}

@@ -1,4 +1,4 @@
-import random
+import secrets
 
-def generate_code():
-    return str(random.randint(100000, 999999))
+def generate_code() -> str:
+    return f"{secrets.randbelow(900000) + 100000:06d}"
