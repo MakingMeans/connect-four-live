@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 class UserCreate(BaseModel):
@@ -25,6 +25,16 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
+
+
 class ActionMessage(BaseModel):
     message: str
     email_sent: bool | None = None
@@ -45,3 +55,19 @@ class UserMeResponse(BaseModel):
     user_id: int
     email: EmailStr
     is_verified: bool
+
+
+class UserUpdateRequest(BaseModel):
+    username: str | None = None
+    email: EmailStr | None = None
+
+    @model_validator(mode="after")
+    def validate_at_least_one_field(self):
+        if self.username is None and self.email is None:
+            raise ValueError("Debes enviar al menos username o email.")
+        return self
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

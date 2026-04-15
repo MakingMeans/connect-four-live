@@ -6,7 +6,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import VERIFICATION_CODE_EXPIRE_MINUTES
+from app.core.config import PASSWORD_RESET_TOKEN_EXPIRE_MINUTES, VERIFICATION_CODE_EXPIRE_MINUTES
 from app.core.jwt_utils import (
     ACCESS_TOKEN_EXPIRE_SECONDS,
     REFRESH_TOKEN_EXPIRE_SECONDS,
@@ -23,7 +23,7 @@ from app.core.security import (
     verify_verification_code,
 )
 from app.models.user import User
-from app.services.email_service import EmailDeliveryError, send_verification_email
+from app.services.email_service import EmailDeliveryError, send_password_reset_email, send_verification_email
 from app.services.rate_limit_service import login_rate_limiter
 from app.utils.code_generator import generate_code
 
@@ -36,6 +36,10 @@ def _utcnow() -> datetime:
 
 def _build_verification_expiration() -> datetime:
     return _utcnow() + timedelta(minutes=VERIFICATION_CODE_EXPIRE_MINUTES)
+
+
+def _build_password_reset_expiration() -> datetime:
+    return _utcnow() + timedelta(minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
 
 
 def _query_user_by_identity(db: Session, identifier: str) -> User | None:
@@ -74,6 +78,20 @@ def _send_verification_email_safely(user: User, code: str) -> bool:
     except EmailDeliveryError:
         logger.warning("No fue posible enviar el OTP al usuario %s. Puede reenviarse mas tarde.", user.email)
         return False
+
+
+def _send_password_reset_email_safely(user: User, token: str) -> bool:
+    try:
+        send_password_reset_email(user.email, user.username, token)
+        return True
+    except EmailDeliveryError:
+        logger.warning("No fue posible enviar el token de restablecimiento al usuario %s.", user.email)
+        return False
+
+
+def _clear_password_reset_state(user: User) -> None:
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
 
 
 def _persist_changes(db: Session) -> None:
@@ -221,3 +239,51 @@ def refresh_access_token(db: Session, refresh_token: str) -> dict:
         raise build_forbidden_exception("La cuenta aun no esta verificada.")
 
     return _issue_tokens(user)
+
+
+def request_password_reset(db: Session, email: str) -> dict:
+    user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
+
+    if not user:
+        return {
+            "message": "Si la cuenta existe, se enviaran instrucciones para restablecer la contrasena.",
+            "email_sent": False,
+        }
+
+    token = generate_code()
+    user.password_reset_token = hash_verification_code(token)
+    user.password_reset_expires_at = _build_password_reset_expiration()
+    user.password_reset_used_at = None
+    _persist_changes(db)
+
+    email_sent = _send_password_reset_email_safely(user, token)
+    return {
+        "message": "Si la cuenta existe, se enviaran instrucciones para restablecer la contrasena.",
+        "email_sent": email_sent,
+    }
+
+
+def confirm_password_reset(db: Session, email: str, token: str, new_password: str) -> dict:
+    user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
+
+    if not user or not user.password_reset_token:
+        raise HTTPException(status_code=400, detail="Token invalido o expirado.")
+
+    if user.password_reset_used_at is not None:
+        raise HTTPException(status_code=400, detail="El token ya fue utilizado.")
+
+    if user.password_reset_expires_at is None or user.password_reset_expires_at < _utcnow():
+        raise HTTPException(status_code=400, detail="El token expiro. Solicita uno nuevo.")
+
+    if not verify_verification_code(token, user.password_reset_token):
+        raise HTTPException(status_code=400, detail="Token invalido o expirado.")
+
+    if verify_password(new_password, user.password):
+        raise HTTPException(status_code=400, detail="La nueva contrasena debe ser diferente a la actual.")
+
+    user.password = hash_password(new_password)
+    _clear_password_reset_state(user)
+    user.password_reset_used_at = _utcnow()
+    _persist_changes(db)
+
+    return {"message": "Contrasena restablecida correctamente."}

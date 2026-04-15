@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.schemas.user import (
     ActionMessage,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RefreshTokenRequest,
     ResendVerificationCode,
     TokenResponse,
@@ -86,3 +88,13 @@ def login(
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     return auth_service.refresh_access_token(db, data.refresh_token)
+
+
+@router.post("/password-reset/request", response_model=ActionMessage, response_model_exclude_none=True)
+def request_password_reset(data: PasswordResetRequest, db: Session = Depends(get_db)):
+    return auth_service.request_password_reset(db, data.email)
+
+
+@router.post("/password-reset/confirm", response_model=ActionMessage, response_model_exclude_none=True)
+def confirm_password_reset(data: PasswordResetConfirm, db: Session = Depends(get_db)):
+    return auth_service.confirm_password_reset(db, data.email, data.token, data.new_password)

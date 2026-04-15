@@ -16,6 +16,18 @@ def ensure_auth_columns() -> None:
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS verification_code_expires_at TIMESTAMP WITH TIME ZONE NULL
         """,
+        """
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR NULL
+        """,
+        """
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMP WITH TIME ZONE NULL
+        """,
+        """
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS password_reset_used_at TIMESTAMP WITH TIME ZONE NULL
+        """,
     ]
 
     with engine.begin() as connection:
