@@ -14,6 +14,8 @@ export type ErrorCode =
   | 'ROOM_FULL'
   | 'NOT_IN_ROOM'
   | 'NOT_HOST'
+  /** Faltan condiciones para empezar: jugador, color o conexión del rival. */
+  | 'NOT_READY'
   | 'NOT_YOUR_TURN'
   | 'INVALID_MOVE'
   | 'COLOR_TAKEN'
@@ -37,6 +39,11 @@ export interface JoinRoomInput {
   code: string;
 }
 
+export interface RejoinRoomInput {
+  code: string;
+  playerId: string;
+}
+
 export interface RoomJoined {
   /** Id de jugador que el cliente debe conservar para reconectar. */
   playerId: string;
@@ -46,8 +53,12 @@ export interface RoomJoined {
 export interface ClientToServerEvents {
   'room:create': (input: CreateRoomInput, ack: Ack<RoomJoined>) => void;
   'room:join': (input: JoinRoomInput, ack: Ack<RoomJoined>) => void;
+  /** Vuelve a una sala tras perder la conexión, con el `playerId` recibido al entrar. */
+  'room:rejoin': (input: RejoinRoomInput, ack: Ack<RoomJoined>) => void;
   'room:leave': (ack: Ack) => void;
   'room:choose-color': (colorId: string, ack: Ack) => void;
+  /** Solo el host. Con la serie terminada, vuelve al lobby con el marcador a cero. */
+  'room:reset': (ack: Ack) => void;
   /** Solo el host. Arranca la primera partida o la siguiente de la serie. */
   'game:start': (ack: Ack) => void;
   'game:move': (col: number, ack: Ack) => void;

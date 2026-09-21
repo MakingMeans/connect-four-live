@@ -11,6 +11,13 @@ export interface Position {
   col: number;
 }
 
+/**
+ * Qué pasa cuando un jugador agota el reloj:
+ * - `skip`: pierde el turno y mueve el rival.
+ * - `lose`: pierde la partida.
+ */
+export type TimeoutRule = 'skip' | 'lose';
+
 /** Configuración que fija el creador de la sala antes de que nadie entre. */
 export interface GameConfig {
   /** Tablero cuadrado de `boardSize x boardSize`. */
@@ -19,6 +26,7 @@ export interface GameConfig {
   turnSeconds: number;
   /** Mejor de N partidas (1..5). */
   bestOf: number;
+  timeoutRule: TimeoutRule;
 }
 
 export interface Player {
@@ -59,6 +67,8 @@ export interface RoomState {
   currentTurn: PlayerSlot | null;
   /** Epoch ms en que expira el turno actual, o `null` si no corre reloj. */
   turnEndsAt: number | null;
+  /** Milisegundos que le quedaban al turno cuando se pausó por una desconexión; `null` si no está pausado. */
+  pausedTurnMs: number | null;
   /** Partidas ganadas por cada slot dentro de la serie. */
   score: Record<PlayerSlot, number>;
   /** Número de partida dentro de la serie, empezando en 1. */

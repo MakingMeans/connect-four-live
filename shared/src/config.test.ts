@@ -14,6 +14,7 @@ describe('gameConfigSchema', () => {
     ['bestOf above max', { bestOf: 6 }],
     ['bestOf below min', { bestOf: 0 }],
     ['turnSeconds below min', { turnSeconds: 1 }],
+    ['unknown timeoutRule', { timeoutRule: 'draw' }],
   ])('rejects %s', (_label, override) => {
     expect(gameConfigSchema.safeParse({ ...DEFAULT_GAME_CONFIG, ...override }).success).toBe(false);
   });

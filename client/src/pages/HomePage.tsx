@@ -6,15 +6,18 @@ import {
   DEFAULT_GAME_CONFIG,
   normalizeRoomCode,
   ROOM_CODE_LENGTH,
+  TIMEOUT_RULES,
   TURN_SECONDS_MAX,
   TURN_SECONDS_MIN,
   USERNAME_MAX,
   USERNAME_MIN,
   type GameConfig,
+  type TimeoutRule,
 } from '@c4/shared';
 import { useState, type FormEvent } from 'react';
 
 import { loadUsername, saveUsername } from '@/lib/storage';
+import { TIMEOUT_RULE_LABELS } from '@/lib/labels';
 
 type Props = {
   isBusy: boolean;
@@ -38,8 +41,14 @@ export function HomePage({ isBusy, error, closedReason, onCreate, onJoin, onDism
     saveUsername(value.trim());
   };
 
-  const handleConfigChange = (key: keyof GameConfig, value: string) => {
+  const handleConfigChange = (key: 'boardSize' | 'turnSeconds' | 'bestOf', value: string) => {
     setConfig((current) => ({ ...current, [key]: Number(value) }));
+  };
+
+  const handleTimeoutRuleChange = (value: string) => {
+    if (TIMEOUT_RULES.includes(value as TimeoutRule)) {
+      setConfig((current) => ({ ...current, timeoutRule: value as TimeoutRule }));
+    }
   };
 
   const handleCreate = (event: FormEvent) => {
@@ -103,6 +112,16 @@ export function HomePage({ isBusy, error, closedReason, onCreate, onJoin, onDism
               onChange={(event) => handleConfigChange('turnSeconds', event.target.value)}
               required
             />
+          </label>
+          <label className="field">
+            <span>Si se agota el tiempo</span>
+            <select value={config.timeoutRule} onChange={(event) => handleTimeoutRuleChange(event.target.value)}>
+              {TIMEOUT_RULES.map((rule) => (
+                <option key={rule} value={rule}>
+                  {TIMEOUT_RULE_LABELS[rule]}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>Mejor de</span>
